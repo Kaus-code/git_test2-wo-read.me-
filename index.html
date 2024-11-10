@@ -3,9 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>LeetCode Question Tracker</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <p>op</p>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 pt-4">
+        <button id="darkModeToggle" class="float-right bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded">
+            🌓 Toggle Dark Mode
+        </button>
+    </div>
+    <div class="container mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold mb-6 text-gray-800">LeetCode Question Tracker</h1>
+            
+            <!-- Import Excel Form -->
+            <div class="mb-8 bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4">Import from Excel/CSV</h2>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="p-2 border rounded w-full" />
+                        <p class="text-sm text-gray-600 mt-2">
+                            Expected columns: LeetCode QNo., Question, Status, Difficulty, Type, Link (optional)
+                        </p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="handleFileUpload()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                            Import Questions
+                        </button>
+                        <a href="#" id="downloadTemplate" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            Download Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Add Form -->
+            <div class="mb-8 bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4">Add Single Question</h2>
+                <form id="addQuestionForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <input type="number" id="leetcodeNo" placeholder="LeetCode Number" class="p-2 border rounded" required>
+                    <input type="text" id="questionTitle" placeholder="Question Title" class="p-2 border rounded" required>
+                    <select id="difficulty" class="p-2 border rounded" required>
+                        <option value="">Select Difficulty</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                    <input type="text" id="questionType" placeholder="Question Type" class="p-2 border rounded" required>
+                    <input type="url" id="questionLink" placeholder="Question Link" class="p-2 border rounded" required>
+                    <button type="submit" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Add Question</button>
+                </form>
+            </div>
+
+            <!-- Controls -->
+            <div class="mb-4 flex flex-wrap gap-4 justify-between">
+                <div class="flex gap-4">
+                    <select id="filterDifficulty" class="p-2 border rounded">
+                        <option value="">Filter by Difficulty</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                    <select id="filterStatus" class="p-2 border rounded">
+                        <option value="">Filter by Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                    <input type="text" id="searchInput" placeholder="Search questions..." class="p-2 border rounded">
+                </div>
+                <div class="flex gap-4">
+                    <button onclick="exportToExcel()" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">Export to Excel</button>
+                    <button onclick="clearAllQuestions()" class="bg-red-500 text-white p-2 rounded hover:bg-red-600">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Questions Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2">No.</th>
+                            <th class="px-4 py-2">LeetCode #</th>
+                            <th class="px-4 py-2">Question</th>
+                            <th class="px-4 py-2">Status</th>
+                            <th class="px-4 py-2">Difficulty</th>
+                            <th class="px-4 py-2">Type</th>
+                            <th class="px-4 py-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="questionsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const html = document.documentElement;
+        
+        // Check for saved dark mode preference
+        if (localStorage.getItem('darkMode') === 'true') {
+            html.classList.add('dark');
+        }
+        
+        darkModeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.setItem('darkMode', html.classList.contains('dark'));
+        });
+
+        // Your existing JavaScript code remains the same until the renderQuestions function
+        // Modified renderQuestions function to make type editable
+        function renderQuestions() {
+            const filteredQuestions = filterQuestions();
+            const tbody = document.getElementById('questionsTableBody');
+            tbody.innerHTML = '';
+
+            filteredQuestions.forEach((q, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-t';
+                tr.innerHTML = `
+                    <td class="px-4 py-2">${index + 1}</td>
+                    <td class="px-4 py-2">${q.leetcodeNo}</td>
+                    <td class="px-4 py-2">${q.title}</td>
+                    <td class="px-4 py-2">
+                        <select class="status-select p-1 rounded" data-index="${index}">
+                            <option value="Pending" ${q.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="In Progress" ${q.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Completed" ${q.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 rounded difficulty-${q.difficulty.toLowerCase()}">${q.difficulty}</span>
+                    </td>
+                    <td class="px-4 py-2">
+                        <input type="text" class="type-edit p-1 rounded border w-full" value="${q.type}" data-index="${index}">
+                    </td>
+                    <td class="px-4 py-2">
+                        <a href="${q.link}" target="_blank" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Solve</a>
+                        <button onclick="deleteQuestion(${index})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ml-2">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Existing status select event listeners
+            document.querySelectorAll('.status-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const index = this.dataset.index;
+                    questions[index].status = this.value;
+                    saveQuestions();
+                    renderQuestions();
+                });
+            });
+
+            // Add type edit event listeners
+            document.querySelectorAll('.type-edit').forEach(input => {
+                input.addEventListener('change', function() {
+                    const index = this.dataset.index;
+                    questions[index].type = this.value;
+                    saveQuestions();
+                });
+            });
+        }
+        let questions = JSON.parse(localStorage.getItem('leetcodeQuestions')) || [];
+
+        // Handle file upload and parsing
+        async function handleFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    // Process the imported data
+                    const newQuestions = jsonData.map((row, index) => ({
+                        no: questions.length + index + 1,
+                        leetcodeNo: row['LeetCode QNo.'] || row['leetcodeNo'] || '',
+                        title: row['Question'] || row['question'] || '',
+                        status: row['Status'] || row['status'] || 'Pending',
+                        difficulty: row['Difficulty'] || row['difficulty'] || 'Medium',
+                        type: row['Type'] || row['type'] || 'Algorithm',
+                        link: row['Link'] || row['link'] || `https://leetcode.com/problems/`
+                    }));
+
+                    questions = [...questions, ...newQuestions];
+                    saveQuestions();
+                    renderQuestions();
+                    alert(`Successfully imported ${newQuestions.length} questions!`);
+                    fileInput.value = '';
+                } catch (error) {
+                    alert('Error processing file. Please make sure it matches the expected format.');
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Generate and download template
+        document.getElementById('downloadTemplate').addEventListener('click', function(e) {
+            e.preventDefault();
+            const template = [
+                {
+                    'LeetCode QNo.': '1552',
+                    'Question': 'Magnetic Force Between Two Balls',
+                    'Status': 'Pending',
+                    'Difficulty': 'Medium',
+                    'Type': 'Binary Search',
+                    'Link': 'https://leetcode.com/problems/magnetic-force-between-two-balls'
+                }
+            ];
+            
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, "leetcode_template.xlsx");
+        });
+
+        // Export current questions to Excel
+        function exportToExcel() {
+            const exportData = questions.map(q => ({
+                'LeetCode QNo.': q.leetcodeNo,
+                'Question': q.title,
+                'Status': q.status,
+                'Difficulty': q.difficulty,
+                'Type': q.type,
+                'Link': q.link
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Questions");
+            XLSX.writeFile(wb, "leetcode_questions.xlsx");
+        }
+
+        // Rest of the existing code...
+        // (Add question form submission, filter functionality, render questions, etc.)
+        
+        document.getElementById('addQuestionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newQuestion = {
+                no: questions.length + 1,
+                leetcodeNo: document.getElementById('leetcodeNo').value,
+                title: document.getElementById('questionTitle').value,
+                status: 'Pending',
+                difficulty: document.getElementById('difficulty').value,
+                type: document.getElementById('questionType').value,
+                link: document.getElementById('questionLink').value
+            };
+            questions.push(newQuestion);
+            saveQuestions();
+            renderQuestions();
+            this.reset();
+        });
+
+        function clearAllQuestions() {
+            if (confirm('Are you sure you want to delete all questions? This cannot be undone.')) {
+                questions = [];
+                saveQuestions();
+                renderQuestions();
+            }
+        }
+
+        function filterQuestions() {
+            const difficultyFilter = document.getElementById('filterDifficulty').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            return questions.filter(q => {
+                const matchesDifficulty = !difficultyFilter || q.difficulty === difficultyFilter;
+                const matchesStatus = !statusFilter || q.status === statusFilter;
+                const matchesSearch = !searchTerm || 
+                    q.title.toLowerCase().includes(searchTerm) || 
+                    q.type.toLowerCase().includes(searchTerm);
+                return matchesDifficulty && matchesStatus && matchesSearch;
+            });
+        }
+
+        document.getElementById('filterDifficulty').addEventListener('change', renderQuestions);
+        document.getElementById('filterStatus').addEventListener('change', renderQuestions);
+        document.getElementById('searchInput').addEventListener('input', renderQuestions);
+
+        function renderQuestions() {
+            const filteredQuestions = filterQuestions();
+            const tbody = document.getElementById('questionsTableBody');
+            tbody.innerHTML = '';
+
+            filteredQuestions.forEach((q, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-t';
+                tr.innerHTML = `
+                    <td class="px-4 py-2">${index + 1}</td>
+                    <td class="px-4 py-2">${q.leetcodeNo}</td>
+                    <td class="px-4 py-2">${q.title}</td>
+                    <td class="px-4 py-2">
+                        <select class="status-select p-1 rounded" data-index="${index}">
+                            <option value="Pending" ${q.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                            <option value="In Progress" ${q.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option value="Completed" ${q.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-2">
+                        <span class="px-2 py-1 rounded difficulty-${q.difficulty.toLowerCase()}">${q.difficulty}</span>
+                    </td>
+                    <td class="px-4 py-2">${q.type}</td>
+                    <td class="px-4 py-2">
+                        <a href="${q.link}" target="_blank" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Solve</a>
+                        <button onclick="deleteQuestion(${index})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ml-2">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.status-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const index = this.dataset.index;
+                    questions[index].status = this.value;
+                    saveQuestions();
+                    renderQuestions();
+                });
+            });
+        }
+
+        function deleteQuestion(index) {
+            if (confirm('Are you sure you want to delete this question?')) {
+                questions.splice(index, 1);
+                questions.forEach((q, i) => q.no = i + 1);
+                saveQuestions();
+                renderQuestions();
+            }
+        }
+
+        function saveQuestions() {
+            localStorage.setItem('leetcodeQuestions', JSON.stringify(questions));
+        }
+
+        renderQuestions();
+    </script>
 </body>
 </html>
