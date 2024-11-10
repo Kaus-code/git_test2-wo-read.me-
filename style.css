@@ -1,0 +1,52 @@
+        .difficulty-easy { background-color: #d1fae5; color: #065f46; }
+        .difficulty-medium { background-color: #fef3c7; color: #92400e; }
+        .difficulty-hard { background-color: #fee2e2; color: #991b1b; }
+        .status-pending { background-color: #f3f4f6; }
+        .status-progress { background-color: #dbeafe; }
+        .status-completed { background-color: #d1fae5; }
+
+
+
+
+
+
+
+
+
+
+        .difficulty-easy { background-color: #d1fae5; color: #065f46; }
+        .difficulty-medium { background-color: #fef3c7; color: #92400e; }
+        .difficulty-hard { background-color: #fee2e2; color: #991b1b; }
+        .status-pending { background-color: #f3f4f6; }
+        .status-progress { background-color: #dbeafe; }
+        .status-completed { background-color: #d1fae5; }
+
+        /* Dark mode styles */
+        .dark {
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+        }
+        .dark .bg-gray-50 {
+            background-color: #1a1a1a;
+        }
+        .dark .bg-white {
+            background-color: #2d2d2d;
+        }
+        .dark .text-gray-800 {
+            color: #e5e5e5;
+        }
+        .dark .text-gray-600 {
+            color: #d1d1d1;
+        }
+        .dark input,
+        .dark select {
+            background-color: #3d3d3d;
+            color: #e5e5e5;
+            border-color: #4d4d4d;
+        }
+        .dark .bg-gray-100 {
+            background-color: #3d3d3d;
+        }
+        .dark .border-t {
+            border-color: #4d4d4d;
+        }
